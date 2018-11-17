@@ -135,7 +135,6 @@ namespace KmaOoad18.Leanware.Web
             feature.Status.Should().Be("ChangeRequested");
         }
 
-
         [Fact]
         public async Task CanFilterFeaturesByTags()
         {
@@ -273,6 +272,70 @@ namespace KmaOoad18.Leanware.Web
             deletedFeature.StatusCode.Should().Be(HttpStatusCode.NotFound);
         }
 
+        [Fact]
+        public async Task CanEnforceWipLimit()
+        {
+            const int wipLimit = 2;
+
+            var client = new LeanwareTestClient(_factory);
+
+            var stories = new List<Story>();
+
+            for (int i = 0; i < wipLimit; i++)
+            {
+                var feature = (await client.Create<Feature>()).Received;
+                var story = (await client.Create<Story>(new { FeatureId = feature.Id })).Received;
+                stories.Add(story);
+                await client.Post(path: $"api/features/{feature.Id}/approve");
+            }
+
+            for (int i = 0; i < wipLimit - 1; i++)
+            {
+                await client.Post(path: $"api/stories/{stories[i].Id}/start");
+                var story = await client.Get<Story>(stories[0].ReadPath);
+                story.Status.Should().Be("Implementing");
+            }
+
+            var response = await client.Post(path: $"api/stories/{stories[wipLimit].Id}/start");
+            response.StatusCode.Should().Be(HttpStatusCode.BadRequest, $"only {wipLimit} features can be in progress at the same time");
+        }
+
+        [Fact]
+        public async Task CanCollectLogs()
+        {
+            var client = new LeanwareTestClient(_factory);
+
+            var feature = (await client.Create<Feature>()).Received;
+
+            var story = (await client.Create<Story>(new { FeatureId = feature.Id })).Received;
+
+            await client.Post(path: $"api/features/{feature.Id}/approve");
+
+            await client.Post(path: $"api/stories/{story.Id}/start");
+
+            await client.Post(path: $"api/stories/{story.Id}/finish");
+
+            var storyUpdate = new { Title = RandomTitle("S") };
+
+            await client.Update<Story>(story.UpdatePath, storyUpdate);
+
+            var logs = await client.Get<List<string>>(path: $"api/logs");
+
+            var assertedLogs = new[] {
+                $"Feature #{feature.Id} has been created",
+                $"Story #{story.Id} has been added to feature #{feature.Id}",
+                $"Feature #{feature.Id} has been approved",
+                $"Story #{story.Id} has been started",
+                $"Story #{story.Id} has been finished",
+                $"Feature #{feature.Id} has been finished",
+                $"Story #{story.Id} has been updated"
+            };
+
+            foreach (var al in assertedLogs)
+            {
+                logs.Should().Contain(al);
+            }
+        }
 
         static List<string> RandomTags => Guid.NewGuid().ToString().Split('-').ToList();
 

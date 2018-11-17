@@ -2,22 +2,27 @@
 
 This week's assignment continues the previous one and adds several use cases.
 
-## Features and stories implementation statuses
+## Enforcing WIP limit
 
-After feature and connected stories are approved, there is a possibility to start implementing stories.
+Work-in-progress (WIP) limit helps to keep a small number of features being implemented simultaneously and rather pay attention to completing started work faster than doing a lot at the same time.
 
-### Starting story implementation
+This requires to prevent user from starting implementation of more than 2 features at the same time, i.e. when you have 2 features in status `Implementing` and try to start the 3rd you get `400 Bad Request`.
 
-`POST /api/stories/{id}/start`
+## Collecting and displaying logs
 
-`Approved` story can be moved to `Implementing` status. When so, parent feature automatically becomes `Implementing`.
+`GET /api/logs`
 
-### Finishing story implementation
+Returns 10 last log entries.
 
-`POST /api/stories/{id}/finish`
+Every atomic operation that changes state of the system must be logged. For the sake of test check such formats are expected:
+- `(Feature|Story) #{id} has been (created|updated|deleted)`
+- `Story #{id} has been added to feature #{id}`
+- `(Feature|Story) #{id} has been (approved|started|finished)`
 
-`Implementing` story can be set to `Implemented`. When all feature stories become `Implemented`, feature also becomes `Implemented`.
+Pay attention to the fact that sometimes one incoming request can result in multiple atomic operations, e.g. finishing all stories in a feature means also finishing the feature itself. This has to be logged separately.
 
-### Adding more stories to implemented feature
+## Implementation note
 
-When a story is added to an already implemented feature, feature gets status `ChangeRequested`, and story gets status `Approved`.
+Though not checked explicitly, still try to apply a more careful design and maintain proper domain logic encapsulation and domain invariants. In particular, think about application of terms you learned recently (entities, values, aggregates, aggregate roots). This is neither necessary nor required, but can help you to connect theory to practice. Logging case is also especially illustrative about other general ideas of app decomposition, low/loose coupling and cross-cutting concerns. There are many ways to implement that, and some can be really sophisticated, be sure to find a balanced solution, without being too straightforward yet not doing overengineering prematurely. 
+
+
