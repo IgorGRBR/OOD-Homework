@@ -281,7 +281,7 @@ namespace KmaOoad18.Leanware.Web
 
             var stories = new List<Story>();
 
-            for (int i = 0; i < wipLimit; i++)
+            for (int i = 0; i < wipLimit + 1; i++)
             {
                 var feature = (await client.Create<Feature>()).Received;
                 var story = (await client.Create<Story>(new { FeatureId = feature.Id })).Received;
@@ -289,7 +289,7 @@ namespace KmaOoad18.Leanware.Web
                 await client.Post(path: $"api/features/{feature.Id}/approve");
             }
 
-            for (int i = 0; i < wipLimit - 1; i++)
+            for (int i = 0; i < wipLimit; i++)
             {
                 await client.Post(path: $"api/stories/{stories[i].Id}/start");
                 var story = await client.Get<Story>(stories[0].ReadPath);
